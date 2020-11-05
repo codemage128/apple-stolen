@@ -1,3 +1,4 @@
+import Axios from 'axios';
 import React, { useState, useEffect } from 'react';
 import {
   Container,
@@ -6,14 +7,9 @@ import {
   Table,
   Navbar,
   Form,
-  Button
 } from 'react-bootstrap';
 
 function App() {
-  const [apple, setApple] = useState([]);
-  const [stolen, setStolen] = useState([]);
-  // const [percent, setPercent] = useState([]);
-  // const [amount, setAmount] = useState([]);
   const [total, setTotal] = useState(0);
   const [fruitAmount, setFruitAmount] = useState(-1);
   const [fruitPercent, setFruitPercent] = useState(-1);
@@ -27,68 +23,31 @@ function App() {
   const [stealTotal, setStealTotal] = useState([]);
   const [stealType, setStealType] = useState("Normal");
   const [waterData, setWaterData] = useState([]);
-
+  const [waterTotal, setWaterTotal] = useState(0);
   const [stolenData, setStolenData] = useState([]);
 
-  const appleData = [
-    { name: "Apple", percent: 20, amount: 20 },
-    { name: "Sugar", percent: 5, amount: 5 },
-    { name: "Water", percent: 75, amount: 75 },
-  ];
-  const orangeData = [
-    { name: "Orange", percent: 20, amount: 20 },
-    { name: "Sugar", percent: 5, amount: 5 },
-    { name: "Water", percent: 75, amount: 75 },
-  ]
-  const mixData = [
-    { name: "Apple", percent: 15, amount: 15 },
-    { name: "Orange", percent: 15, amount: 15 },
-    { name: "Sugar", percent: 5, amount: 5 },
-    { name: "Water", percent: 65, amount: 65 },
-  ]
-
-  const changeType = (evt) => {
+  const fetchData = (juiceType) => {
     let _total = 0;
     let _fruitAmount = 0;
     let _fruitPercent = 0;
+    const _data = "type=" + juiceType;
+    Axios.post('http://localhost:8000/api/', _data).then(result => {
+      result.data.data.map(item => {
+        _total += item.amount;
+        if (item.name === "Apple" || item.name === "Orange") {
+          _fruitAmount += item.amount;
+          _fruitPercent += item.percent;
+        }
+      });
+      setData(result.data.data);
+      setTotal(_total);
+      setFruitAmount(_fruitAmount);
+      setFruitPercent(_fruitPercent);
+    })
+  }
+  const changeType = (evt) => {
     setJuiceType(evt.target.value);
-    switch (evt.target.value) {
-      case "apple":
-        setData(appleData);
-        appleData.map(item => {
-          _total += item.amount;
-          if (item.name === "Apple") {
-            _fruitAmount += item.amount;
-            _fruitPercent += item.percent;
-          }
-        });
-        break;
-      case "orange":
-        setData(orangeData);
-        orangeData.map(item => {
-          _total += item.amount;
-          if (item.name === "Orange") {
-            _fruitAmount += item.amount;
-            _fruitPercent += item.percent;
-          }
-        });
-        break;
-      case "mix":
-        setData(mixData);
-        mixData.map(item => {
-          _total += item.amount;
-          if (item.name === "Apple" || item.name === "Orange") {
-            _fruitAmount += item.amount;
-            _fruitPercent += item.percent;
-          }
-        });
-        break;
-      default:
-        break;
-    }
-    setTotal(_total);
-    setFruitAmount(_fruitAmount);
-    setFruitPercent(_fruitPercent);
+    fetchData(evt.target.value)
   }
   useEffect(() => {
     reload();
@@ -142,65 +101,41 @@ function App() {
       setFruitPercent(_fruitPercent);
     }
   }
-
-  const effect = (evt) => {
-    let _data = [];
-    let _data1 = [];
+  const addwater = () => {
+    const _data = "type=" + JSON.stringify({ array: stolenData });
+    Axios.post('http://localhost:8000/api/add_water/', _data).then(result => {
+      let _total = 0;
+      result.data.data.map(item => {
+        _total += item.amount;        
+      })
+      setWaterData(result.data.data);
+      setWaterTotal(_total);
+    })
+  }
+  const stoleanApple = () => {
+    let remain = [];
+    let _apple = [];
     let _fruitAmount = 0;
     let _fruitPercent = 0;
     let _total = 0;
     data.map(item => {
-      _data.push(JSON.parse(JSON.stringify(item)));
-      _data1.push(JSON.parse(JSON.stringify(item)));
+      remain.push(JSON.parse(JSON.stringify(item)));
+      _apple.push(JSON.parse(JSON.stringify(item)));
     })
-    setStealType(evt.target.value);
-    switch (evt.target.value) {
-      case "Stolen":
-        _data.map(item => {
-          if (item.name === "Apple") {
-            item.amount = weight * item.amount;
-          }
-          _total += item.amount;
-        })
-        _data.map(item => {
-          item.percent = parseFloat((item.amount * 100 / _total).toFixed(2));
-          if (item.name === "Apple" || item.name === "Orange") {
-            _fruitAmount += item.amount;
-            _fruitPercent += item.percent;
-          }
-        })
-        break;
-      case "Water":
-        let _waterData = [];
-        stolenData.map(item => {
-          _waterData.push(JSON.parse(JSON.stringify(item)));
-        })
-        _waterData.map(item => {
-          if(item.name === "Water"){
-            item.amount += 92.5;
-          }
-          setStealTotal(stealTotal + 92.5);
-        })
-        setWaterData(_waterData);
-        // _data.map(item => {
-        //   if (item.name === "Water") {
-        //     item.amount = item.amount + 92.5;
-        //   }
-        //   if (item.name === "Apple" || item.name === "Orange") {
-        //     _fruitAmount += item.amount;
-        //     _fruitPercent += item.percent;
-        //   }
-        //   _total += item.amount;
-        // })
-        break;
-      default:
-        _total = total;
-        _fruitAmount = fruitAmount;
-        _fruitPercent = fruitPercent;
-        break;
-    }
-
-    _data1.map((item) => {
+    remain.map(item => {
+      if (item.name === "Apple") {
+        item.amount = weight * item.amount;
+      }
+      _total += item.amount;
+    })
+    remain.map(item => {
+      item.percent = parseFloat((item.amount * 100 / _total).toFixed(2));
+      if (item.name === "Apple" || item.name === "Orange") {
+        _fruitAmount += item.amount;
+        _fruitPercent += item.percent;
+      }
+    })
+    _apple.map((item) => {
       if (item.name === "Apple") {
         item.percent = weight * item.percent;
         item.amount = weight * item.amount;
@@ -209,12 +144,24 @@ function App() {
         item.percent = 0;
       }
     })
-
-    setStealData(_data);
-    setStolenData(_data1);
+    setStealData(remain);
+    setStolenData(_apple);
     setStealfruitAmount(_fruitAmount);
     setStealfruitPercent(_fruitPercent);
     setStealTotal(_total);
+  }
+  const effect = (evt) => {
+    setStealType(evt.target.value);
+    switch (evt.target.value) {
+      case "Stolen":
+        stoleanApple();
+        break;
+      case "Water":
+        addwater();
+        break;
+      default:
+        break;
+    }
   }
 
   const juicetype = () => (
@@ -277,11 +224,6 @@ function App() {
               <td>{item.amount} Kg</td>
             </tr>
           ))}
-          {/* <tr>
-            <td>Fruit(%)</td>
-            <td>{stealfruitPercent} %</td>
-            <td>{stealfruitAmount} kg</td>
-          </tr> */}
           <tr>
             <td colSpan={2}>Basis (Kg)</td>
             <td> {total - stealTotal} Kg </td>
@@ -306,14 +248,9 @@ function App() {
               <td>{item.amount} Kg</td>
             </tr>
           ))}
-          {/* <tr>
-            <td>Fruit(%)</td>
-            <td>{stealfruitPercent} %</td>
-            <td>{stealfruitAmount} kg</td>
-          </tr> */}
           <tr>
             <td colSpan={2}>Basis (Kg)</td>
-            <td> {total - stealTotal} Kg </td>
+            <td> {waterTotal} Kg </td>
           </tr>
         </tbody>
       </Table>
